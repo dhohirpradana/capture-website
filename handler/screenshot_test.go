@@ -39,7 +39,7 @@ func TestCapture(t *testing.T) {
 			"Valid Body",
 			model.ScreenshotParam{
 				Url:      "https://www.youtube.com",
-				Filename: "customfilename",
+				Filename: "filename",
 				Wait:     5,
 			},
 			http.StatusOK,
@@ -48,7 +48,7 @@ func TestCapture(t *testing.T) {
 			"Invalid Body",
 			model.ScreenshotParam{
 				Url:      "https://www.youtube.com",
-				Filename: "customfilename",
+				Filename: "filename",
 			},
 			http.StatusUnprocessableEntity,
 		},
@@ -56,10 +56,10 @@ func TestCapture(t *testing.T) {
 			"Invalid URL Timeout",
 			model.ScreenshotParam{
 				Url:      "https://www.youtube.com1",
-				Filename: "customfilename",
+				Filename: "filename",
 				Wait:     5,
 			},
-			http.StatusGatewayTimeout,
+			http.StatusInternalServerError,
 		},
 	}
 
@@ -67,10 +67,6 @@ func TestCapture(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			if test.body.Quality == 0 {
 				test.body.Quality = 100
-			}
-
-			if test.body.Wait == 0 {
-				test.body.Wait = 1
 			}
 
 			if test.body.Width == 0 {
@@ -92,7 +88,7 @@ func TestCapture(t *testing.T) {
 			result := screenshot.Capture(c)
 
 			if assert.NoError(t, result) {
-				assert.Equal(t, http.StatusOK, rec.Code)
+				assert.Equal(t, test.expected, rec.Code)
 			}
 		})
 	}
