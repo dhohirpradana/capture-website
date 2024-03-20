@@ -84,14 +84,6 @@ func (h ScreenshotHandler) Capture(c echo.Context) (err error) {
 	quality := &screenshotParam.Quality
 	filename := &screenshotParam.Filename
 
-	if *quality == 0 {
-		*quality = 100
-	}
-
-	if *wait == 0 {
-		*wait = 1
-	}
-
 	if *width == 0 {
 		*width = 1490
 	}

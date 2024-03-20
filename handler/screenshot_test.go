@@ -36,16 +36,17 @@ func TestCapture(t *testing.T) {
 		expected int
 	}{
 		{
-			"Valid Body",
+			"If body is valid",
 			model.ScreenshotParam{
 				Url:      "https://www.youtube.com",
 				Filename: "filename",
 				Wait:     5,
+				Quality:  100,
 			},
 			http.StatusOK,
 		},
 		{
-			"Invalid Body",
+			"If body is incomplete",
 			model.ScreenshotParam{
 				Url:      "https://www.youtube.com",
 				Filename: "filename",
@@ -53,22 +54,49 @@ func TestCapture(t *testing.T) {
 			http.StatusUnprocessableEntity,
 		},
 		{
-			"Invalid URL Timeout",
+			"If url is invalid or timeout",
 			model.ScreenshotParam{
 				Url:      "https://www.youtube.com1",
 				Filename: "filename",
+				Quality:  100,
 				Wait:     5,
 			},
 			http.StatusInternalServerError,
+		},
+		{
+			"If wait is more than 1 minute",
+			model.ScreenshotParam{
+				Url:      "https://www.youtube.com",
+				Filename: "filename",
+				Quality:  100,
+				Wait:     65,
+			},
+			http.StatusOK,
+		},
+		{
+			"If quality more than 100",
+			model.ScreenshotParam{
+				Url:      "https://www.youtube.com",
+				Filename: "filename",
+				Quality:  110,
+				Wait:     5,
+			},
+			http.StatusUnprocessableEntity,
+		},
+		{
+			"If quality less than 1",
+			model.ScreenshotParam{
+				Url:      "https://www.youtube.com",
+				Filename: "filename",
+				Quality:  -10,
+				Wait:     5,
+			},
+			http.StatusUnprocessableEntity,
 		},
 	}
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			if test.body.Quality == 0 {
-				test.body.Quality = 100
-			}
-
 			if test.body.Width == 0 {
 				test.body.Width = 1490
 			}
