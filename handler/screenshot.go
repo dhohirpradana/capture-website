@@ -1,10 +1,9 @@
 package handler
 
 import (
-	"captureWeb/models"
+	"captureWeb/model"
 	"context"
 	"encoding/json"
-	"fmt"
 	"github.com/chromedp/chromedp"
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
@@ -34,40 +33,36 @@ func fullScreenshot(waitSec time.Duration, url string, quality int, width int64,
 }
 
 func deleteFile(uuid uuid.UUID) {
-	pngPath := "result/capture-" + uuid.String() + ".png"
-	pdfPath := "result/capture-" + uuid.String() + ".pdf"
+	pngPath := "capture-" + uuid.String() + ".png"
+	pdfPath := "capture-" + uuid.String() + ".pdf"
 
 	// delete png
-	pngErr := os.Remove(pngPath)
-	if pngErr != nil {
-		fmt.Println("Error: ", pngErr)
-	} else {
-		fmt.Println("Successfully deleted file: ", pngPath)
-	}
+	_ = os.Remove(pngPath)
 
 	// delete pdf
-	pdfErr := os.Remove(pdfPath)
-	if pdfErr != nil {
-		fmt.Println("Error: ", pdfErr)
-	} else {
-		fmt.Println("Successfully deleted file: ", pdfPath)
-	}
+	_ = os.Remove(pdfPath)
 }
 
 func (h ScreenshotHandler) Capture(c echo.Context) (err error) {
-	body, err := io.ReadAll(c.Request().Body)
-
 	id := uuid.New()
-	filePath := "result/capture-" + id.String()
+	filePath := "capture-" + id.String()
 
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, err.Error())
 	}
 
-	var screenshotParam models.ScreenshotParam
-	err = json.Unmarshal(body, &screenshotParam)
-	if err != nil {
-		return c.JSON(http.StatusInternalServerError, err.Error())
+	var screenshotParam model.ScreenshotParam
+
+	if c.Request().Method == "POST" {
+		body, err := io.ReadAll(c.Request().Body)
+		err = json.Unmarshal(body, &screenshotParam)
+		if err != nil {
+			return c.JSON(http.StatusInternalServerError, err.Error())
+		}
+	} else {
+		if err := c.Bind(&screenshotParam); err != nil {
+			return err
+		}
 	}
 
 	if err := validator.Validate(screenshotParam); err != nil {
@@ -105,7 +100,7 @@ func (h ScreenshotHandler) Capture(c echo.Context) (err error) {
 		*height = 1080
 	}
 
-	fmt.Println("screenShotParam:", screenshotParam)
+	//fmt.Println("screenShotParam:", screenshotParam)
 
 	if err := chromedp.Run(ctx, fullScreenshot(*wait, url, *quality, *width, *height, &buf)); err != nil {
 		log.Fatal(err)
