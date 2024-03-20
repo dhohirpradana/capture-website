@@ -1,7 +1,7 @@
-package handler
+package helper
 
 import (
-	"captureWeb/model"
+	"captureWeb/entity"
 	"encoding/json"
 	"fmt"
 	"github.com/labstack/echo/v4"
@@ -21,7 +21,7 @@ func TestMain(m *testing.M) {
 func TestCapture(t *testing.T) {
 	screenshot := InitScreenshot()
 	e := echo.New()
-	var screenshotParam model.ScreenshotParam
+	var screenshotParam entity.ScreenshotParam
 
 	screenshotParam.Url = "https://www.youtube.com"
 	screenshotParam.Filename = "testaja"
@@ -32,12 +32,12 @@ func TestCapture(t *testing.T) {
 
 	tests := []struct {
 		name     string
-		body     model.ScreenshotParam
+		body     entity.ScreenshotParam
 		expected int
 	}{
 		{
 			"If body is valid",
-			model.ScreenshotParam{
+			entity.ScreenshotParam{
 				Url:      "https://www.youtube.com",
 				Filename: "filename",
 				Wait:     5,
@@ -47,7 +47,7 @@ func TestCapture(t *testing.T) {
 		},
 		{
 			"If body is incomplete",
-			model.ScreenshotParam{
+			entity.ScreenshotParam{
 				Url:      "https://www.youtube.com",
 				Filename: "filename",
 			},
@@ -55,7 +55,7 @@ func TestCapture(t *testing.T) {
 		},
 		{
 			"If url is invalid or timeout",
-			model.ScreenshotParam{
+			entity.ScreenshotParam{
 				Url:      "https://www.youtube.com1",
 				Filename: "filename",
 				Quality:  100,
@@ -65,7 +65,7 @@ func TestCapture(t *testing.T) {
 		},
 		{
 			"If wait is more than 1 minute",
-			model.ScreenshotParam{
+			entity.ScreenshotParam{
 				Url:      "https://www.youtube.com",
 				Filename: "filename",
 				Quality:  100,
@@ -75,7 +75,7 @@ func TestCapture(t *testing.T) {
 		},
 		{
 			"If quality more than 100",
-			model.ScreenshotParam{
+			entity.ScreenshotParam{
 				Url:      "https://www.youtube.com",
 				Filename: "filename",
 				Quality:  110,
@@ -85,7 +85,7 @@ func TestCapture(t *testing.T) {
 		},
 		{
 			"If quality less than 1",
-			model.ScreenshotParam{
+			entity.ScreenshotParam{
 				Url:      "https://www.youtube.com",
 				Filename: "filename",
 				Quality:  -10,

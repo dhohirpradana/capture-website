@@ -1,7 +1,7 @@
-package handler
+package helper
 
 import (
-	"captureWeb/model"
+	"captureWeb/entity"
 	"context"
 	"encoding/json"
 	"github.com/chromedp/chromedp"
@@ -51,7 +51,7 @@ func (h ScreenshotHandler) Capture(c echo.Context) (err error) {
 		return c.JSON(http.StatusInternalServerError, err.Error())
 	}
 
-	var screenshotParam model.ScreenshotParam
+	var screenshotParam entity.ScreenshotParam
 
 	if c.Request().Method == "POST" {
 		body, err := io.ReadAll(c.Request().Body)

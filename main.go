@@ -1,7 +1,7 @@
 package main
 
 import (
-	screenshotHandler "captureWeb/handler"
+	screenshotHandler "captureWeb/helper"
 	"fmt"
 	"github.com/labstack/echo/v4"
 )
