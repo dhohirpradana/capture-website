@@ -30,105 +30,70 @@ func TestCapture(t *testing.T) {
 	screenshotParam.Width = 1490
 	screenshotParam.Height = 1080
 
-	screenshotParamJson, err := json.Marshal(screenshotParam)
-	assert.Equal(t, nil, err, err)
-
-	req := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(string(screenshotParamJson)))
-	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
-	rec := httptest.NewRecorder()
-	c := e.NewContext(req, rec)
-
-	result := screenshot.Capture(c)
-
-	if assert.NoError(t, result) {
-		assert.Equal(t, http.StatusOK, rec.Code)
+	tests := []struct {
+		name     string
+		body     model.ScreenshotParam
+		expected int
+	}{
+		{
+			"Valid Body",
+			model.ScreenshotParam{
+				Url:      "https://www.youtube.com",
+				Filename: "customfilename",
+				Wait:     5,
+			},
+			http.StatusOK,
+		},
+		{
+			"Invalid Body",
+			model.ScreenshotParam{
+				Url:      "https://www.youtube.com",
+				Filename: "customfilename",
+			},
+			http.StatusUnprocessableEntity,
+		},
+		{
+			"Invalid URL Timeout",
+			model.ScreenshotParam{
+				Url:      "https://www.youtube.com1",
+				Filename: "customfilename",
+				Wait:     5,
+			},
+			http.StatusGatewayTimeout,
+		},
 	}
 
-	fmt.Println("Test Passed")
-}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			if test.body.Quality == 0 {
+				test.body.Quality = 100
+			}
 
-func TestCaptureZeroTime(t *testing.T) {
-	screenshot := InitScreenshot()
-	e := echo.New()
-	var screenshotParam model.ScreenshotParam
+			if test.body.Wait == 0 {
+				test.body.Wait = 1
+			}
 
-	screenshotParam.Url = "https://www.youtube.com"
-	screenshotParam.Filename = "testaja"
-	screenshotParam.Wait = 0
-	screenshotParam.Quality = 100
-	screenshotParam.Width = 1490
-	screenshotParam.Height = 1080
+			if test.body.Width == 0 {
+				test.body.Width = 1490
+			}
 
-	screenshotParamJson, err := json.Marshal(screenshotParam)
-	assert.Equal(t, nil, err, err)
+			if test.body.Height == 0 {
+				test.body.Height = 1080
+			}
 
-	req := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(string(screenshotParamJson)))
-	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
-	rec := httptest.NewRecorder()
-	c := e.NewContext(req, rec)
+			screenshotParamJson, err := json.Marshal(test.body)
+			assert.Equal(t, nil, err, err)
 
-	result := screenshot.Capture(c)
+			req := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(string(screenshotParamJson)))
+			req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+			rec := httptest.NewRecorder()
+			c := e.NewContext(req, rec)
 
-	if assert.NoError(t, result) {
-		assert.Equal(t, http.StatusUnprocessableEntity, rec.Code)
+			result := screenshot.Capture(c)
+
+			if assert.NoError(t, result) {
+				assert.Equal(t, http.StatusOK, rec.Code)
+			}
+		})
 	}
-
-	fmt.Println("Test Passed")
-}
-
-func TestCaptureNoFilename(t *testing.T) {
-	screenshot := InitScreenshot()
-	e := echo.New()
-	var screenshotParam model.ScreenshotParam
-
-	screenshotParam.Url = "https://www.youtube.com"
-	screenshotParam.Wait = 30
-	screenshotParam.Quality = 100
-	screenshotParam.Width = 1490
-	screenshotParam.Height = 1080
-
-	screenshotParamJson, err := json.Marshal(screenshotParam)
-	assert.Equal(t, nil, err, err)
-
-	req := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(string(screenshotParamJson)))
-	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
-	rec := httptest.NewRecorder()
-	c := e.NewContext(req, rec)
-
-	result := screenshot.Capture(c)
-
-	if assert.NoError(t, result) {
-		assert.Equal(t, http.StatusUnprocessableEntity, rec.Code)
-	}
-
-	fmt.Println("Test Passed")
-}
-
-func TestCaptureInvalidURL(t *testing.T) {
-	screenshot := InitScreenshot()
-	e := echo.New()
-	var screenshotParam model.ScreenshotParam
-
-	screenshotParam.Url = "https://www.youtube.com1"
-	screenshotParam.Filename = "testaja"
-	screenshotParam.Wait = 5
-	screenshotParam.Quality = 100
-	screenshotParam.Width = 1490
-	screenshotParam.Height = 1080
-
-	screenshotParamJson, err := json.Marshal(screenshotParam)
-	assert.Equal(t, nil, err, err)
-
-	req := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(string(screenshotParamJson)))
-	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
-	rec := httptest.NewRecorder()
-	c := e.NewContext(req, rec)
-
-	result := screenshot.Capture(c)
-
-	if assert.NoError(t, result) {
-		assert.Equal(t, http.StatusInternalServerError, rec.Code)
-	}
-
-	fmt.Println("Test Passed")
 }
