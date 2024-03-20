@@ -43,6 +43,8 @@ func TestCapture(t *testing.T) {
 	if assert.NoError(t, result) {
 		assert.Equal(t, http.StatusOK, rec.Code)
 	}
+
+	fmt.Println("Test Passed")
 }
 
 func TestCaptureZeroTime(t *testing.T) {
@@ -70,6 +72,8 @@ func TestCaptureZeroTime(t *testing.T) {
 	if assert.NoError(t, result) {
 		assert.Equal(t, http.StatusUnprocessableEntity, rec.Code)
 	}
+
+	fmt.Println("Test Passed")
 }
 
 func TestCaptureNoFilename(t *testing.T) {
@@ -96,6 +100,8 @@ func TestCaptureNoFilename(t *testing.T) {
 	if assert.NoError(t, result) {
 		assert.Equal(t, http.StatusUnprocessableEntity, rec.Code)
 	}
+
+	fmt.Println("Test Passed")
 }
 
 func TestCaptureInvalidURL(t *testing.T) {
@@ -123,4 +129,6 @@ func TestCaptureInvalidURL(t *testing.T) {
 	if assert.NoError(t, result) {
 		assert.Equal(t, http.StatusInternalServerError, rec.Code)
 	}
+
+	fmt.Println("Test Passed")
 }
