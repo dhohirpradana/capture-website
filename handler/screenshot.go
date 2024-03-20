@@ -103,7 +103,8 @@ func (h ScreenshotHandler) Capture(c echo.Context) (err error) {
 	//fmt.Println("screenShotParam:", screenshotParam)
 
 	if err := chromedp.Run(ctx, fullScreenshot(*wait, url, *quality, *width, *height, &buf)); err != nil {
-		log.Fatal(err)
+		//log.Fatal(err)
+		return c.JSON(http.StatusInternalServerError, err.Error())
 	}
 
 	if err := os.WriteFile(filePath+".png", buf, 0o644); err != nil {
