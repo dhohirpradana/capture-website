@@ -53,16 +53,10 @@ func (h ScreenshotHandler) Capture(c echo.Context) (err error) {
 
 	var screenshotParam entity.ScreenshotParam
 
-	if c.Request().Method == "POST" {
-		body, err := io.ReadAll(c.Request().Body)
-		err = json.Unmarshal(body, &screenshotParam)
-		if err != nil {
-			return c.JSON(http.StatusInternalServerError, err.Error())
-		}
-	} else {
-		if err := c.Bind(&screenshotParam); err != nil {
-			return err
-		}
+	body, err := io.ReadAll(c.Request().Body)
+	err = json.Unmarshal(body, &screenshotParam)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, err.Error())
 	}
 
 	if err := validator.Validate(screenshotParam); err != nil {

@@ -10,7 +10,6 @@ func main() {
 	screenshot := screenshotHandler.InitScreenshot()
 	e := echo.New()
 
-	e.GET("/capture", screenshot.Capture)
 	e.POST("/capture", screenshot.Capture)
 
 	// Start the server
