@@ -21,14 +21,6 @@ func TestMain(m *testing.M) {
 func TestCapture(t *testing.T) {
 	screenshot := InitScreenshot()
 	e := echo.New()
-	var screenshotParam entity.ScreenshotParam
-
-	screenshotParam.Url = "https://www.youtube.com"
-	screenshotParam.Filename = "testaja"
-	screenshotParam.Wait = 5
-	screenshotParam.Quality = 100
-	screenshotParam.Width = 1490
-	screenshotParam.Height = 1080
 
 	tests := []struct {
 		name     string
@@ -119,5 +111,43 @@ func TestCapture(t *testing.T) {
 				assert.Equal(t, test.expected, rec.Code)
 			}
 		})
+	}
+}
+
+func BenchmarkCapture(b *testing.B) {
+	screenshot := InitScreenshot()
+	e := echo.New()
+
+	body := entity.ScreenshotParam{
+		Url:      "https://www.youtube.com",
+		Filename: "filename",
+		Quality:  100,
+		Wait:     10,
+	}
+
+	for i := 0; i < b.N; i++ {
+		if body.Width == 0 {
+			body.Width = 1490
+		}
+
+		if body.Height == 0 {
+			body.Height = 1080
+		}
+
+		screenshotParamJson, _ := json.Marshal(body)
+
+		req := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(string(screenshotParamJson)))
+		req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+		rec := httptest.NewRecorder()
+		c := e.NewContext(req, rec)
+
+		_ = screenshot.Capture(c)
+	}
+}
+
+func BenchmarkTest(b *testing.B) {
+	j := 0
+	for i := 0; i < b.N; i++ {
+		j += i
 	}
 }
