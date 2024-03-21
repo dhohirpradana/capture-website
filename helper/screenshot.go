@@ -4,6 +4,7 @@ import (
 	"captureWeb/entity"
 	"context"
 	"encoding/json"
+	"fmt"
 	"github.com/chromedp/chromedp"
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
@@ -13,6 +14,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"path/filepath"
 	"time"
 )
 
@@ -32,20 +34,23 @@ func fullScreenshot(waitSec time.Duration, url string, quality int, width int64,
 	}
 }
 
-func deleteFile(uuid uuid.UUID) {
-	pngPath := "capture-" + uuid.String() + ".png"
-	pdfPath := "capture-" + uuid.String() + ".pdf"
-
-	// delete png
-	_ = os.Remove(pngPath)
-
-	// delete pdf
-	_ = os.Remove(pdfPath)
-}
-
 func (h ScreenshotHandler) Capture(c echo.Context) (err error) {
 	id := uuid.New()
 	filePath := "capture-" + id.String()
+
+	tempDir, err := os.MkdirTemp("", "dir")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	defer func(path string) {
+		err := os.RemoveAll(path)
+		if err != nil {
+			fmt.Println(err.Error())
+		}
+	}(tempDir)
+
+	fmt.Println(tempDir)
 
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, err.Error())
@@ -93,31 +98,30 @@ func (h ScreenshotHandler) Capture(c echo.Context) (err error) {
 		return c.JSON(http.StatusInternalServerError, err.Error())
 	}
 
-	if err := os.WriteFile(filePath+".png", buf, 0o644); err != nil {
-		log.Fatal(err)
+	tempPngPath := filepath.Join(tempDir, filePath+".png")
+	if err := os.WriteFile(tempPngPath, buf, 0o644); err != nil {
+		return c.JSON(http.StatusInternalServerError, err.Error())
 	}
 
 	pdf := gopdf.GoPdf{}
 	pdf.Start(gopdf.Config{PageSize: *gopdf.PageSizeA3})
 	pdf.AddPage()
 
-	err = pdf.Image(filePath+".png", 0, 0, nil)
+	err = pdf.Image(tempPngPath, 0, 0, nil)
 
 	if err != nil {
 		log.Print(err.Error())
-		return
+		return c.JSON(http.StatusInternalServerError, err.Error())
 	}
 
-	err = pdf.WritePdf(filePath + ".pdf")
+	tempPdfPath := filepath.Join(tempDir, filePath+".pdf")
+	err = pdf.WritePdf(tempPdfPath)
 	if err != nil {
 		log.Print(err.Error())
-		return
+		return c.JSON(http.StatusInternalServerError, err.Error())
 	}
 
 	filenameNew := *filename + ".pdf"
 
-	// delete files
-	defer deleteFile(id)
-
-	return c.Attachment(filePath+".pdf", filenameNew)
+	return c.Attachment(tempPdfPath, filenameNew)
 }
