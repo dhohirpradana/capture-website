@@ -2,21 +2,14 @@ package main
 
 import (
 	screenshotHandler "captureWeb/helper"
-	"fmt"
-	"github.com/labstack/echo/v4"
+	"github.com/gofiber/fiber/v2"
 )
 
 func main() {
 	screenshot := screenshotHandler.InitScreenshot()
-	e := echo.New()
+	app := fiber.New()
 
-	e.GET("/capture", screenshot.Capture)
-	e.POST("/capture", screenshot.Capture)
+	app.Post("/capture", screenshot.Capture)
 
-	// Start the server
-	err := e.Start(":9090")
-	if err != nil {
-		fmt.Println("Error starting server: ", err)
-		return
-	}
+	app.Listen(":9090")
 }

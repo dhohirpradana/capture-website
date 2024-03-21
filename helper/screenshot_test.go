@@ -4,10 +4,11 @@ import (
 	"captureWeb/entity"
 	"encoding/json"
 	"fmt"
-	"github.com/labstack/echo/v4"
+	"github.com/gofiber/fiber/v2"
 	"github.com/stretchr/testify/assert"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"strings"
 	"testing"
 )
@@ -20,7 +21,11 @@ func TestMain(m *testing.M) {
 
 func TestCapture(t *testing.T) {
 	screenshot := InitScreenshot()
-	e := echo.New()
+	app := fiber.New()
+
+	app.Post("/capture", screenshot.Capture)
+
+	defer app.Shutdown()
 
 	tests := []struct {
 		name     string
@@ -100,24 +105,18 @@ func TestCapture(t *testing.T) {
 			screenshotParamJson, err := json.Marshal(test.body)
 			assert.Equal(t, nil, err, err)
 
-			req := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(string(screenshotParamJson)))
-			req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
-			rec := httptest.NewRecorder()
-			c := e.NewContext(req, rec)
+			req := httptest.NewRequest(fiber.MethodPost, "/capture", strings.NewReader(string(screenshotParamJson)))
+			req.Header.Set(fiber.HeaderContentType, fiber.MIMEApplicationJSON)
+			req.Header.Add(fiber.HeaderContentLength, strconv.FormatInt(req.ContentLength, 10))
 
-			result := screenshot.Capture(c)
+			resp, _ := app.Test(req, 1)
 
-			if assert.NoError(t, result) {
-				assert.Equal(t, test.expected, rec.Code)
-			}
+			assert.Equalf(t, test.expected, resp.StatusCode, test.name)
 		})
 	}
 }
 
 func BenchmarkCapture(b *testing.B) {
-	screenshot := InitScreenshot()
-	e := echo.New()
-
 	body := entity.ScreenshotParam{
 		Url:      "https://www.youtube.com",
 		Filename: "filename",
@@ -137,11 +136,8 @@ func BenchmarkCapture(b *testing.B) {
 		screenshotParamJson, _ := json.Marshal(body)
 
 		req := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(string(screenshotParamJson)))
-		req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
-		rec := httptest.NewRecorder()
-		c := e.NewContext(req, rec)
-
-		_ = screenshot.Capture(c)
+		req.Header.Set(fiber.HeaderContentType, fiber.MIMEApplicationJSON)
+		_ = httptest.NewRecorder()
 	}
 }
 

@@ -3,15 +3,12 @@ package helper
 import (
 	"captureWeb/entity"
 	"context"
-	"encoding/json"
 	"github.com/chromedp/chromedp"
+	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
-	"github.com/labstack/echo/v4"
 	"github.com/signintech/gopdf"
 	"gopkg.in/validator.v2"
-	"io"
 	"log"
-	"net/http"
 	"os"
 	"time"
 )
@@ -43,30 +40,18 @@ func deleteFile(uuid uuid.UUID) {
 	_ = os.Remove(pdfPath)
 }
 
-func (h ScreenshotHandler) Capture(c echo.Context) (err error) {
+func (h ScreenshotHandler) Capture(c *fiber.Ctx) (err error) {
 	id := uuid.New()
 	filePath := "capture-" + id.String()
 
-	if err != nil {
-		return c.JSON(http.StatusInternalServerError, err.Error())
-	}
-
 	var screenshotParam entity.ScreenshotParam
 
-	if c.Request().Method == "POST" {
-		body, err := io.ReadAll(c.Request().Body)
-		err = json.Unmarshal(body, &screenshotParam)
-		if err != nil {
-			return c.JSON(http.StatusInternalServerError, err.Error())
-		}
-	} else {
-		if err := c.Bind(&screenshotParam); err != nil {
-			return err
-		}
+	if err := c.BodyParser(screenshotParam); err != nil {
+		return fiber.NewError(fiber.StatusUnprocessableEntity, err.Error())
 	}
 
 	if err := validator.Validate(screenshotParam); err != nil {
-		return c.JSON(http.StatusUnprocessableEntity, err.Error())
+		return fiber.NewError(fiber.StatusUnprocessableEntity, err.Error())
 	}
 
 	ctx, cancel := chromedp.NewContext(
@@ -82,7 +67,7 @@ func (h ScreenshotHandler) Capture(c echo.Context) (err error) {
 	width := &screenshotParam.Width
 	height := &screenshotParam.Height
 	quality := &screenshotParam.Quality
-	filename := &screenshotParam.Filename
+	//filename := &screenshotParam.Filename
 
 	if *width == 0 {
 		*width = 1490
@@ -96,7 +81,7 @@ func (h ScreenshotHandler) Capture(c echo.Context) (err error) {
 
 	if err := chromedp.Run(ctx, fullScreenshot(*wait, url, *quality, *width, *height, &buf)); err != nil {
 		//log.Fatal(err)
-		return c.JSON(http.StatusInternalServerError, err.Error())
+		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
 	}
 
 	if err := os.WriteFile(filePath+".png", buf, 0o644); err != nil {
@@ -120,10 +105,10 @@ func (h ScreenshotHandler) Capture(c echo.Context) (err error) {
 		return
 	}
 
-	filenameNew := *filename + ".pdf"
+	//filenameNew := *filename + ".pdf"
 
 	// delete files
 	defer deleteFile(id)
 
-	return c.Attachment(filePath+".pdf", filenameNew)
+	return c.SendFile(filePath + ".pdf")
 }
