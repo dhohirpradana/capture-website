@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/gofiber/fiber/v2"
 	"github.com/stretchr/testify/assert"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strconv"
@@ -25,14 +26,29 @@ func TestCapture(t *testing.T) {
 
 	app.Post("/capture", screenshot.Capture)
 
-	defer app.Shutdown()
+	defer func(app *fiber.App) {
+		_ = app.Shutdown()
+	}(app)
 
 	tests := []struct {
+		route    string
 		name     string
 		body     entity.ScreenshotParam
 		expected int
 	}{
 		{
+			"/not-found",
+			"If path not found",
+			entity.ScreenshotParam{
+				Url:      "https://www.youtube.com",
+				Filename: "filename",
+				Wait:     5,
+				Quality:  100,
+			},
+			http.StatusNotFound,
+		},
+		{
+			"/capture",
 			"If body is valid",
 			entity.ScreenshotParam{
 				Url:      "https://www.youtube.com",
@@ -43,6 +59,7 @@ func TestCapture(t *testing.T) {
 			http.StatusOK,
 		},
 		{
+			"/capture",
 			"If body is incomplete",
 			entity.ScreenshotParam{
 				Url:      "https://www.youtube.com",
@@ -51,6 +68,7 @@ func TestCapture(t *testing.T) {
 			http.StatusUnprocessableEntity,
 		},
 		{
+			"/capture",
 			"If url is invalid or timeout",
 			entity.ScreenshotParam{
 				Url:      "https://www.youtube.com1",
@@ -61,6 +79,7 @@ func TestCapture(t *testing.T) {
 			http.StatusInternalServerError,
 		},
 		{
+			"/capture",
 			"If wait is more than 1 minute",
 			entity.ScreenshotParam{
 				Url:      "https://www.youtube.com",
@@ -71,6 +90,7 @@ func TestCapture(t *testing.T) {
 			http.StatusOK,
 		},
 		{
+			"/capture",
 			"If quality more than 100",
 			entity.ScreenshotParam{
 				Url:      "https://www.youtube.com",
@@ -81,6 +101,7 @@ func TestCapture(t *testing.T) {
 			http.StatusUnprocessableEntity,
 		},
 		{
+			"/capture",
 			"If quality less than 1",
 			entity.ScreenshotParam{
 				Url:      "https://www.youtube.com",
@@ -102,14 +123,18 @@ func TestCapture(t *testing.T) {
 				test.body.Height = 1080
 			}
 
-			screenshotParamJson, err := json.Marshal(test.body)
-			assert.Equal(t, nil, err, err)
+			screenshotParamJson, _ := json.Marshal(&test.body)
 
-			req := httptest.NewRequest(fiber.MethodPost, "/capture", strings.NewReader(string(screenshotParamJson)))
+			req := httptest.NewRequest(fiber.MethodPost, test.route, strings.NewReader(string(screenshotParamJson)))
 			req.Header.Set(fiber.HeaderContentType, fiber.MIMEApplicationJSON)
 			req.Header.Add(fiber.HeaderContentLength, strconv.FormatInt(req.ContentLength, 10))
 
-			resp, _ := app.Test(req, 1)
+			resp, err := app.Test(req, -1)
+			assert.Nil(t, err)
+
+			defer func(Body io.ReadCloser) {
+				_ = Body.Close()
+			}(resp.Body)
 
 			assert.Equalf(t, test.expected, resp.StatusCode, test.name)
 		})
@@ -117,6 +142,11 @@ func TestCapture(t *testing.T) {
 }
 
 func BenchmarkCapture(b *testing.B) {
+	screenshot := InitScreenshot()
+	app := fiber.New()
+
+	app.Post("/capture", screenshot.Capture)
+
 	body := entity.ScreenshotParam{
 		Url:      "https://www.youtube.com",
 		Filename: "filename",
@@ -135,9 +165,11 @@ func BenchmarkCapture(b *testing.B) {
 
 		screenshotParamJson, _ := json.Marshal(body)
 
-		req := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(string(screenshotParamJson)))
+		req := httptest.NewRequest(fiber.MethodPost, "/capture", strings.NewReader(string(screenshotParamJson)))
 		req.Header.Set(fiber.HeaderContentType, fiber.MIMEApplicationJSON)
-		_ = httptest.NewRecorder()
+		req.Header.Add(fiber.HeaderContentLength, strconv.FormatInt(req.ContentLength, 10))
+
+		_, _ = app.Test(req, -1)
 	}
 }
 

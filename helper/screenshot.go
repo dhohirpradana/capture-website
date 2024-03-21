@@ -3,6 +3,7 @@ package helper
 import (
 	"captureWeb/entity"
 	"context"
+	"fmt"
 	"github.com/chromedp/chromedp"
 	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
@@ -10,6 +11,7 @@ import (
 	"gopkg.in/validator.v2"
 	"log"
 	"os"
+	"path/filepath"
 	"time"
 )
 
@@ -29,24 +31,27 @@ func fullScreenshot(waitSec time.Duration, url string, quality int, width int64,
 	}
 }
 
-func deleteFile(uuid uuid.UUID) {
-	pngPath := "capture-" + uuid.String() + ".png"
-	pdfPath := "capture-" + uuid.String() + ".pdf"
-
-	// delete png
-	_ = os.Remove(pngPath)
-
-	// delete pdf
-	_ = os.Remove(pdfPath)
-}
-
 func (h ScreenshotHandler) Capture(c *fiber.Ctx) (err error) {
 	id := uuid.New()
 	filePath := "capture-" + id.String()
 
+	tempDir, err := os.MkdirTemp("", "dir")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	defer func(path string) {
+		err := os.RemoveAll(path)
+		if err != nil {
+			fmt.Println(err.Error())
+		}
+	}(tempDir)
+
+	fmt.Println(tempDir)
+
 	var screenshotParam entity.ScreenshotParam
 
-	if err := c.BodyParser(screenshotParam); err != nil {
+	if err := c.BodyParser(&screenshotParam); err != nil {
 		return fiber.NewError(fiber.StatusUnprocessableEntity, err.Error())
 	}
 
@@ -77,38 +82,36 @@ func (h ScreenshotHandler) Capture(c *fiber.Ctx) (err error) {
 		*height = 1080
 	}
 
-	//fmt.Println("screenShotParam:", screenshotParam)
-
 	if err := chromedp.Run(ctx, fullScreenshot(*wait, url, *quality, *width, *height, &buf)); err != nil {
 		//log.Fatal(err)
 		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
 	}
 
-	if err := os.WriteFile(filePath+".png", buf, 0o644); err != nil {
-		log.Fatal(err)
+	tempPngPath := filepath.Join(tempDir, filePath+".png")
+	if err := os.WriteFile(tempPngPath, buf, 0o644); err != nil {
+		//log.Fatal(err)
+		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
 	}
 
 	pdf := gopdf.GoPdf{}
 	pdf.Start(gopdf.Config{PageSize: *gopdf.PageSizeA3})
 	pdf.AddPage()
 
-	err = pdf.Image(filePath+".png", 0, 0, nil)
+	err = pdf.Image(tempPngPath, 0, 0, nil)
 
 	if err != nil {
 		log.Print(err.Error())
-		return
+		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
 	}
 
-	err = pdf.WritePdf(filePath + ".pdf")
+	tempPdfPath := filepath.Join(tempDir, filePath+".pdf")
+	err = pdf.WritePdf(tempPdfPath)
 	if err != nil {
 		log.Print(err.Error())
-		return
+		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
 	}
 
 	//filenameNew := *filename + ".pdf"
 
-	// delete files
-	defer deleteFile(id)
-
-	return c.SendFile(filePath + ".pdf")
+	return c.SendFile(tempPdfPath)
 }

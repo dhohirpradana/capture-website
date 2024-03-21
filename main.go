@@ -11,5 +11,5 @@ func main() {
 
 	app.Post("/capture", screenshot.Capture)
 
-	app.Listen(":9090")
+	_ = app.Listen(":9090")
 }
