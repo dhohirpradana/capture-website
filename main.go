@@ -7,7 +7,13 @@ import (
 
 func main() {
 	screenshot := screenshotHandler.InitScreenshot()
-	app := fiber.New()
+	app := fiber.New(fiber.Config{
+		Prefork:       true,
+		CaseSensitive: true,
+		StrictRouting: true,
+		ServerHeader:  "Fiber",
+		AppName:       "Capture Website v1.0.1",
+	})
 
 	app.Post("/capture", screenshot.Capture)
 

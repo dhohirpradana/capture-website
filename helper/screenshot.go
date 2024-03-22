@@ -6,10 +6,8 @@ import (
 	"fmt"
 	"github.com/chromedp/chromedp"
 	"github.com/gofiber/fiber/v2"
-	"github.com/google/uuid"
 	"github.com/signintech/gopdf"
 	"gopkg.in/validator.v2"
-	"log"
 	"os"
 	"path/filepath"
 	"time"
@@ -31,23 +29,39 @@ func fullScreenshot(waitSec time.Duration, url string, quality int, width int64,
 	}
 }
 
-func (h ScreenshotHandler) Capture(c *fiber.Ctx) (err error) {
-	id := uuid.New()
-	filePath := "capture-" + id.String()
+func writeFile(tempPath string, buf []byte) error {
+	if err := os.WriteFile(tempPath, buf, 0o666); err != nil {
+		return err
+	}
+	return nil
+}
 
+func createTempDir() (string, error) {
 	tempDir, err := os.MkdirTemp("", "dir")
 	if err != nil {
-		log.Fatal(err)
+		return tempDir, err
 	}
+	return tempDir, nil
+}
 
-	defer func(path string) {
-		err := os.RemoveAll(path)
+func removeTempDir(tempDir string) error {
+	err := os.RemoveAll(tempDir)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (h ScreenshotHandler) Capture(c *fiber.Ctx) (err error) {
+	tempDir, err := createTempDir()
+	fmt.Println(tempDir)
+
+	defer func(tempDir string) {
+		err := removeTempDir(tempDir)
 		if err != nil {
 			fmt.Println(err.Error())
 		}
 	}(tempDir)
-
-	fmt.Println(tempDir)
 
 	var screenshotParam entity.ScreenshotParam
 
@@ -72,7 +86,7 @@ func (h ScreenshotHandler) Capture(c *fiber.Ctx) (err error) {
 	width := &screenshotParam.Width
 	height := &screenshotParam.Height
 	quality := &screenshotParam.Quality
-	//filename := &screenshotParam.Filename
+	filename := &screenshotParam.Filename
 
 	if *width == 0 {
 		*width = 1490
@@ -83,13 +97,12 @@ func (h ScreenshotHandler) Capture(c *fiber.Ctx) (err error) {
 	}
 
 	if err := chromedp.Run(ctx, fullScreenshot(*wait, url, *quality, *width, *height, &buf)); err != nil {
-		//log.Fatal(err)
 		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
 	}
 
-	tempPngPath := filepath.Join(tempDir, filePath+".png")
-	if err := os.WriteFile(tempPngPath, buf, 0o644); err != nil {
-		//log.Fatal(err)
+	tempPngPath := filepath.Join(tempDir, *filename+".png")
+	err = writeFile(tempPngPath, buf)
+	if err != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
 	}
 
@@ -98,20 +111,15 @@ func (h ScreenshotHandler) Capture(c *fiber.Ctx) (err error) {
 	pdf.AddPage()
 
 	err = pdf.Image(tempPngPath, 0, 0, nil)
-
 	if err != nil {
-		log.Print(err.Error())
 		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
 	}
 
-	tempPdfPath := filepath.Join(tempDir, filePath+".pdf")
+	tempPdfPath := filepath.Join(tempDir, *filename+".pdf")
 	err = pdf.WritePdf(tempPdfPath)
 	if err != nil {
-		log.Print(err.Error())
 		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
 	}
-
-	//filenameNew := *filename + ".pdf"
 
 	return c.SendFile(tempPdfPath)
 }
