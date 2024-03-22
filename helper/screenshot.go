@@ -3,15 +3,13 @@ package helper
 import (
 	"captureWeb/entity"
 	"context"
-	"encoding/json"
 	"fmt"
 	"github.com/chromedp/chromedp"
 	"github.com/labstack/echo/v4"
 	"github.com/signintech/gopdf"
 	"gopkg.in/validator.v2"
-	"io"
-	"log"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"time"
@@ -59,7 +57,7 @@ func removeTempDir(tempDir string) error {
 func (h ScreenshotHandler) Capture(c echo.Context) (err error) {
 	tempDir, err := createTempDir()
 	if err != nil {
-		log.Fatal(err)
+		return c.JSON(http.StatusInternalServerError, err.Error())
 	}
 
 	defer func(path string) {
@@ -69,16 +67,11 @@ func (h ScreenshotHandler) Capture(c echo.Context) (err error) {
 		}
 	}(tempDir)
 
-	if err != nil {
-		return c.JSON(http.StatusInternalServerError, err.Error())
-	}
-
 	var screenshotParam entity.ScreenshotParam
 
-	body, err := io.ReadAll(c.Request().Body)
-	err = json.Unmarshal(body, &screenshotParam)
+	err = c.Bind(&screenshotParam)
 	if err != nil {
-		return c.JSON(http.StatusInternalServerError, err.Error())
+		return c.JSON(http.StatusBadRequest, err.Error())
 	}
 
 	if err := validator.Validate(screenshotParam); err != nil {
@@ -93,12 +86,17 @@ func (h ScreenshotHandler) Capture(c echo.Context) (err error) {
 
 	var buf []byte
 
-	url := screenshotParam.Url
+	urlBody := &screenshotParam.Url
 	wait := &screenshotParam.Wait
 	width := &screenshotParam.Width
 	height := &screenshotParam.Height
 	quality := &screenshotParam.Quality
 	filename := &screenshotParam.Filename
+
+	_, err = url.ParseRequestURI(*urlBody)
+	if err != nil {
+		return c.JSON(http.StatusUnprocessableEntity, err.Error())
+	}
 
 	if *width == 0 {
 		*width = 1490
@@ -108,7 +106,7 @@ func (h ScreenshotHandler) Capture(c echo.Context) (err error) {
 		*height = 1080
 	}
 
-	if err := chromedp.Run(ctx, fullScreenshot(*wait, url, *quality, *width, *height, &buf)); err != nil {
+	if err := chromedp.Run(ctx, fullScreenshot(*wait, *urlBody, *quality, *width, *height, &buf)); err != nil {
 		return c.JSON(http.StatusInternalServerError, err.Error())
 	}
 
@@ -132,7 +130,5 @@ func (h ScreenshotHandler) Capture(c echo.Context) (err error) {
 		return c.JSON(http.StatusInternalServerError, err.Error())
 	}
 
-	filenameNew := *filename + ".pdf"
-
-	return c.Attachment(tempPdfPath, filenameNew)
+	return c.Attachment(tempPdfPath, *filename+".pdf")
 }

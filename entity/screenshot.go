@@ -8,5 +8,5 @@ type ScreenshotParam struct {
 	Width    int64         `json:"width" query:"width"`
 	Height   int64         `json:"height"  query:"height"`
 	Quality  int           `json:"quality" query:"quality" validate:"nonzero,nonnil,min=1,max=100"`
-	Filename string        `json:"filename" query:"filename" validate:"nonzero,nonnil"`
+	Filename string        `json:"filename" query:"filename" validate:"nonzero,nonnil,regexp=^[a-zA-Z0-9]*$"`
 }

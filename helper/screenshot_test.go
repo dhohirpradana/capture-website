@@ -28,6 +28,26 @@ func TestCapture(t *testing.T) {
 		expected int
 	}{
 		{
+			"If filename contain ilegal character",
+			entity.ScreenshotParam{
+				Url:      "https://www.youtube.com",
+				Filename: "filename$",
+				Wait:     5,
+				Quality:  100,
+			},
+			http.StatusUnprocessableEntity,
+		},
+		{
+			"If url is invalid",
+			entity.ScreenshotParam{
+				Url:      "sdgdfhgfhgf",
+				Filename: "filename",
+				Wait:     5,
+				Quality:  100,
+			},
+			http.StatusUnprocessableEntity,
+		},
+		{
 			"If body is valid",
 			entity.ScreenshotParam{
 				Url:      "https://www.youtube.com",
