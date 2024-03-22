@@ -20,12 +20,12 @@ func InitScreenshot() ScreenshotHandler {
 	return ScreenshotHandler{}
 }
 
-func fullScreenshot(waitSec time.Duration, url string, quality int, width int64, height int64, res *[]byte) chromedp.Tasks {
+func fullScreenshot(screenshotParam entity.ScreenshotParam, res *[]byte) chromedp.Tasks {
 	return chromedp.Tasks{
-		chromedp.EmulateViewport(width, height),
-		chromedp.Navigate(url),
-		chromedp.Sleep(waitSec * time.Second),
-		chromedp.FullScreenshot(res, quality),
+		chromedp.EmulateViewport(screenshotParam.Width, screenshotParam.Height),
+		chromedp.Navigate(screenshotParam.Url),
+		chromedp.Sleep(screenshotParam.Wait * time.Second),
+		chromedp.FullScreenshot(res, screenshotParam.Quality),
 	}
 }
 
@@ -54,7 +54,6 @@ func removeTempDir(tempDir string) error {
 
 func (h ScreenshotHandler) Capture(c *fiber.Ctx) (err error) {
 	tempDir, err := createTempDir()
-	fmt.Println(tempDir)
 
 	defer func(tempDir string) {
 		err := removeTempDir(tempDir)
@@ -63,7 +62,7 @@ func (h ScreenshotHandler) Capture(c *fiber.Ctx) (err error) {
 		}
 	}(tempDir)
 
-	var screenshotParam entity.ScreenshotParam
+	var screenshotParam *entity.ScreenshotParam
 
 	if err := c.BodyParser(&screenshotParam); err != nil {
 		return fiber.NewError(fiber.StatusUnprocessableEntity, err.Error())
@@ -81,11 +80,8 @@ func (h ScreenshotHandler) Capture(c *fiber.Ctx) (err error) {
 
 	var buf []byte
 
-	url := screenshotParam.Url
-	wait := &screenshotParam.Wait
 	width := &screenshotParam.Width
 	height := &screenshotParam.Height
-	quality := &screenshotParam.Quality
 	filename := &screenshotParam.Filename
 
 	if *width == 0 {
@@ -96,7 +92,7 @@ func (h ScreenshotHandler) Capture(c *fiber.Ctx) (err error) {
 		*height = 1080
 	}
 
-	if err := chromedp.Run(ctx, fullScreenshot(*wait, url, *quality, *width, *height, &buf)); err != nil {
+	if err := chromedp.Run(ctx, fullScreenshot(*screenshotParam, &buf)); err != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
 	}
 
