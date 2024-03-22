@@ -122,7 +122,6 @@ func (h ScreenshotHandler) Capture(c echo.Context) (err error) {
 	pdf.AddPage()
 
 	err = pdf.Image(tempPngPath, 0, 0, nil)
-
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, err.Error())
 	}
