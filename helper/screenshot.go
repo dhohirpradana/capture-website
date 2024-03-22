@@ -67,7 +67,7 @@ func (h ScreenshotHandler) Capture(c echo.Context) (err error) {
 		}
 	}(tempDir)
 
-	var screenshotParam entity.ScreenshotParam
+	var screenshotParam *entity.ScreenshotParam
 
 	err = c.Bind(&screenshotParam)
 	if err != nil {
@@ -104,7 +104,7 @@ func (h ScreenshotHandler) Capture(c echo.Context) (err error) {
 		*height = 1080
 	}
 
-	if err := chromedp.Run(ctx, fullScreenshot(&screenshotParam, &buf)); err != nil {
+	if err := chromedp.Run(ctx, fullScreenshot(screenshotParam, &buf)); err != nil {
 		return c.JSON(http.StatusInternalServerError, err.Error())
 	}
 
