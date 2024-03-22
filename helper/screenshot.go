@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/chromedp/chromedp"
-	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
 	"github.com/signintech/gopdf"
 	"gopkg.in/validator.v2"
@@ -34,23 +33,41 @@ func fullScreenshot(waitSec time.Duration, url string, quality int, width int64,
 	}
 }
 
-func (h ScreenshotHandler) Capture(c echo.Context) (err error) {
-	id := uuid.New()
-	filePath := "capture-" + id.String()
+func writeFile(tempPath string, buf []byte) error {
+	if err := os.WriteFile(tempPath, buf, 0o666); err != nil {
+		return err
+	}
+	return nil
+}
 
+func createTempDir() (string, error) {
 	tempDir, err := os.MkdirTemp("", "dir")
+	if err != nil {
+		return tempDir, err
+	}
+	return tempDir, nil
+}
+
+func removeTempDir(tempDir string) error {
+	err := os.RemoveAll(tempDir)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (h ScreenshotHandler) Capture(c echo.Context) (err error) {
+	tempDir, err := createTempDir()
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	defer func(path string) {
-		err := os.RemoveAll(path)
+		err := removeTempDir(path)
 		if err != nil {
 			fmt.Println(err.Error())
 		}
 	}(tempDir)
-
-	fmt.Println(tempDir)
 
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, err.Error())
@@ -91,15 +108,12 @@ func (h ScreenshotHandler) Capture(c echo.Context) (err error) {
 		*height = 1080
 	}
 
-	//fmt.Println("screenShotParam:", screenshotParam)
-
 	if err := chromedp.Run(ctx, fullScreenshot(*wait, url, *quality, *width, *height, &buf)); err != nil {
-		//log.Fatal(err)
 		return c.JSON(http.StatusInternalServerError, err.Error())
 	}
 
-	tempPngPath := filepath.Join(tempDir, filePath+".png")
-	if err := os.WriteFile(tempPngPath, buf, 0o644); err != nil {
+	tempPngPath := filepath.Join(tempDir, *filename+".png")
+	if err := writeFile(tempPngPath, buf); err != nil {
 		return c.JSON(http.StatusInternalServerError, err.Error())
 	}
 
@@ -110,14 +124,12 @@ func (h ScreenshotHandler) Capture(c echo.Context) (err error) {
 	err = pdf.Image(tempPngPath, 0, 0, nil)
 
 	if err != nil {
-		log.Print(err.Error())
 		return c.JSON(http.StatusInternalServerError, err.Error())
 	}
 
-	tempPdfPath := filepath.Join(tempDir, filePath+".pdf")
+	tempPdfPath := filepath.Join(tempDir, *filename+".pdf")
 	err = pdf.WritePdf(tempPdfPath)
 	if err != nil {
-		log.Print(err.Error())
 		return c.JSON(http.StatusInternalServerError, err.Error())
 	}
 
