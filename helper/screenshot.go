@@ -22,12 +22,12 @@ func InitScreenshot() ScreenshotHandler {
 	return ScreenshotHandler{}
 }
 
-func fullScreenshot(waitSec time.Duration, url string, quality int, width int64, height int64, res *[]byte) chromedp.Tasks {
+func fullScreenshot(screenshotParam *entity.ScreenshotParam, res *[]byte) chromedp.Tasks {
 	return chromedp.Tasks{
-		chromedp.EmulateViewport(width, height),
-		chromedp.Navigate(url),
-		chromedp.Sleep(waitSec * time.Second),
-		chromedp.FullScreenshot(res, quality),
+		chromedp.EmulateViewport(screenshotParam.Width, screenshotParam.Height),
+		chromedp.Navigate(screenshotParam.Url),
+		chromedp.Sleep(screenshotParam.Wait * time.Second),
+		chromedp.FullScreenshot(res, screenshotParam.Quality),
 	}
 }
 
@@ -87,10 +87,8 @@ func (h ScreenshotHandler) Capture(c echo.Context) (err error) {
 	var buf []byte
 
 	urlBody := &screenshotParam.Url
-	wait := &screenshotParam.Wait
 	width := &screenshotParam.Width
 	height := &screenshotParam.Height
-	quality := &screenshotParam.Quality
 	filename := &screenshotParam.Filename
 
 	_, err = url.ParseRequestURI(*urlBody)
@@ -106,7 +104,7 @@ func (h ScreenshotHandler) Capture(c echo.Context) (err error) {
 		*height = 1080
 	}
 
-	if err := chromedp.Run(ctx, fullScreenshot(*wait, *urlBody, *quality, *width, *height, &buf)); err != nil {
+	if err := chromedp.Run(ctx, fullScreenshot(&screenshotParam, &buf)); err != nil {
 		return c.JSON(http.StatusInternalServerError, err.Error())
 	}
 
