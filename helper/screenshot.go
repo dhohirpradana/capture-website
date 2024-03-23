@@ -20,7 +20,7 @@ func InitScreenshot() ScreenshotHandler {
 	return ScreenshotHandler{}
 }
 
-func fullScreenshot(screenshotParam entity.ScreenshotParam, res *[]byte) chromedp.Tasks {
+func fullScreenshot(screenshotParam *entity.ScreenshotParam, res *[]byte) chromedp.Tasks {
 	return chromedp.Tasks{
 		chromedp.EmulateViewport(screenshotParam.Width, screenshotParam.Height),
 		chromedp.Navigate(screenshotParam.Url),
@@ -92,7 +92,7 @@ func (h ScreenshotHandler) Capture(c *fiber.Ctx) (err error) {
 		*height = 1080
 	}
 
-	if err := chromedp.Run(ctx, fullScreenshot(*screenshotParam, &buf)); err != nil {
+	if err := chromedp.Run(ctx, fullScreenshot(screenshotParam, &buf)); err != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
 	}
 
